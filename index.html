@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conversor de Volume (Mistura) → Nm³ e kg</title>
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; padding:32px;
+      background:#0f172a; color:#e5e7eb;
+      font-family: Arial, sans-serif;
+      display:flex; justify-content:center;
+    }
+    .card{
+      width:min(980px, 100%);
+      background:#020617;
+      border:1px solid #1e293b;
+      border-radius:14px;
+      padding:22px;
+      box-shadow: 0 0 22px rgba(0,0,0,.35);
+    }
+    h1{ margin:0 0 10px; font-size:20px; text-align:center; }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+    .panel{
+      background:#020617;
+      border:1px solid #1e293b;
+      border-radius:12px;
+      padding:14px;
+    }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media (max-width: 520px){
+      .row{ grid-template-columns: 1fr; }
+    }
+    label{ display:block; margin:10px 0 6px; font-size:12px; color:#cbd5e1; }
+    input, select{
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #1e293b;
+      background:#0b1220;
+      color:#e5e7eb;
+      outline:none;
+    }
+    input:focus, select:focus{ border-color:#2563eb; }
+    .btn{
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #1e293b;
+      background:#0b1220;
+      color:#e5e7eb;
+      cursor:pointer;
+    }
+    .btn.primary{
+      background:#2563eb;
+      border-color:#2563eb;
+      color:white;
+      font-weight:600;
+    }
+    .btn.primary:hover{ background:#1d4ed8; }
+    .btn.danger{
+      background:#3f1d1d;
+      border-color:#7f1d1d;
+      color:#fecaca;
+    }
+    .btn.danger:hover{ background:#5b1f1f; }
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .muted{ color:#94a3b8; font-size:12px; line-height:1.4; }
+    .result{
+      margin-top:14px;
+      background:#0b1220;
+      border:1px solid #1e293b;
+      border-radius:12px;
+      padding:12px;
+      font-size:14px;
+      line-height:1.55;
+    }
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top:10px;
+      font-size:13px;
+    }
+    th, td{
+      border-bottom:1px solid #1e293b;
+      padding:10px 8px;
+      text-align:left;
+      vertical-align:middle;
+    }
+    th{ color:#cbd5e1; font-weight:600; }
+    .chip{
+      display:inline-block; padding:4px 8px;
+      border-radius:999px; border:1px solid #1e293b;
+      background:#0b1220; color:#cbd5e1; font-size:12px;
+    }
+    .warn{ color:#fbbf24; }
+    .ok{ color:#34d399; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Conversor de Mistura Gasosa → Nm³ e kg</h1>
+    <div class="muted" style="text-align:center;margin-bottom:14px;">
+      Base: mistura ideal (% mol ≈ % vol). Para gases reais em alta pressão, use <span class="chip">Z</span> no modo Engenharia.
+    </div>
+
+    <div class="grid">
+      <!-- ENTRADAS -->
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label>Modo</label>
+            <select id="mode" onchange="renderMode()">
+              <option value="ops">Operação (rápido e enxuto)</option>
+              <option value="proc">Engenharia de Processo (avançado)</option>
+            </select>
+          </div>
+          <div>
+            <label>Unidade do volume informado</label>
+            <select id="volUnit">
+              <option value="m3">m³</option>
+              <option value="L">L</option>
+              <option value="Nm3">Nm³</option>
+              <option value="ft3">ft³</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Volume informado</label>
+            <input type="number" id="V" step="any" placeholder="ex.: 120" />
+          </div>
+          <div>
+            <label>Pressão (bar abs)</label>
+            <input type="number" id="P" step="any" placeholder="ex.: 8" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Temperatura (°C)</label>
+            <input type="number" id="T" step="any" placeholder="ex.: 35" />
+          </div>
+          <div id="zBox">
+            <label>Fator Z (compressibilidade)</label>
+            <input type="number" id="Z" step="any" value="1" />
+          </div>
+        </div>
+
+        <div id="procBox" class="panel" style="margin-top:14px;">
+          <div class="muted">
+            Premissas editáveis (modo Engenharia): condições “N” e opção de mostrar cálculo.
+          </div>
+          <div class="row">
+            <div>
+              <label>Temperatura normal Tn (°C)</label>
+              <input type="number" id="TnC" step="any" value="0" />
+            </div>
+            <div>
+              <label>Pressão normal Pn (bar)</label>
+              <input type="number" id="Pn" step="any" value="1.01325" />
+            </div>
+          </div>
+          <label>
+            <input type="checkbox" id="showMath" />
+            Mostrar premissas e passos
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" onclick="calculate()">Converter</button>
+          <button class="btn" onclick="loadExample()">Carregar exemplo</button>
+        </div>
+
+        <div id="alerts" class="muted" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- MISTURA -->
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label>Adicionar componente</label>
+            <select id="gasSelect"></select>
+          </div>
+          <div style="display:flex;align-items:end;gap:10px;">
+            <button class="btn primary" style="width:100%;" onclick="addComponent()">+ Adicionar</button>
+          </div>
+        </div>
+
+        <table id="mixTable">
+          <thead>
+            <tr>
+              <th>Componente</th>
+              <th>MW (g/mol)</th>
+              <th>% mol (≈ % vol)</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="muted" id="mixSummary" style="margin-top:10px;">
+          Soma atual: <span class="mono" id="sumPct">0.00</span>% • MW médio: <span class="mono" id="mwMix">—</span> g/mol
+        </div>
+
+        <div class="result" id="result">
+          Preencha os campos, monte a mistura, e clique em <b>Converter</b>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Banco simples (expanda à vontade)
+  const gases = [
+    { key: "H2",  name: "H₂ – Hidrogênio",        MW: 2.016 },
+    { key: "N2",  name: "N₂ – Nitrogênio",        MW: 28.0134 },
+    { key: "O2",  name: "O₂ – Oxigênio",          MW: 31.998 },
+    { key: "CH4", name: "CH₄ – Metano",          MW: 16.043 },
+    { key: "CO2", name: "CO₂ – Dióxido de Carbono", MW: 44.01 },
+    { key: "CO",  name: "CO – Monóxido de Carbono", MW: 28.01 },
+    { key: "Ar",  name: "Ar – Argônio",          MW: 39.948 },
+    { key: "H2O", name: "H₂O – Vapor d’água",     MW: 18.01528 },
+  ];
+
+  let mixture = []; // {key, pct, MW}
+
+  // Constantes de conversão
+  const FT3_TO_M3 = 0.028316846592; // exato
+  const R = 0.08314; // bar·L/(mol·K)
+
+  function init() {
+    const sel = document.getElementById("gasSelect");
+    sel.innerHTML = gases.map(g => `<option value="${g.key}">${g.name}</option>`).join("");
+    renderMode();
+    renderTable();
+  }
+
+  function renderMode() {
+    const mode = document.getElementById("mode").value;
+    const procBox = document.getElementById("procBox");
+    const zBox = document.getElementById("zBox");
+
+    if (mode === "ops") {
+      procBox.style.display = "none";
+      zBox.style.display = "none";
+      document.getElementById("Z").value = 1;
+      // Defaults fixos de “N” (0°C e 1 atm)
+      document.getElementById("TnC").value = 0;
+      document.getElementById("Pn").value = 1.01325;
+      document.getElementById("showMath").checked = false;
+    } else {
+      procBox.style.display = "block";
+      zBox.style.display = "block";
+      if (!document.getElementById("Z").value) document.getElementById("Z").value = 1;
+    }
+  }
+
+  function addComponent() {
+    const key = document.getElementById("gasSelect").value;
+    const g = gases.find(x => x.key === key);
+    if (!g) return;
+
+    // evita duplicar: se existir, só destaca (ou poderia somar)
+    const exists = mixture.find(x => x.key === key);
+    if (exists) {
+      flashAlert(`⚠️ ${g.name} já está na mistura. Ajuste o % na tabela.`, "warn");
+      return;
+    }
+
+    mixture.push({ key: g.key, MW: g.MW, pct: 0 });
+    renderTable();
+    flashAlert(`✅ Adicionado: ${g.name}. Agora defina o %.`, "ok");
+  }
+
+  function removeComponent(key) {
+    mixture = mixture.filter(x => x.key !== key);
+    renderTable();
+  }
+
+  function updatePct(key, value) {
+    const v = Number(value);
+    const item = mixture.find(x => x.key === key);
+    if (!item) return;
+    item.pct = isFinite(v) ? v : 0;
+    renderTable(false);
+  }
+
+  function renderTable(full = true) {
+    const tbody = document.querySelector("#mixTable tbody");
+    if (full) tbody.innerHTML = "";
+
+    // render rows
+    tbody.innerHTML = mixture.map(item => {
+      const g = gases.find(x => x.key === item.key);
+      const name = g ? g.name : item.key;
+      return `
+        <tr>
+          <td>${name}</td>
+          <td class="mono">${item.MW}</td>
+          <td>
+            <input type="number" step="any" value="${item.pct}" min="0"
+              oninput="updatePct('${item.key}', this.value)" />
+          </td>
+          <td>
+            <button class="btn danger" onclick="removeComponent('${item.key}')">Remover</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // summary
+    const sum = mixture.reduce((a, x) => a + (Number(x.pct) || 0), 0);
+    document.getElementById("sumPct").textContent = sum.toFixed(2);
+
+    const y = mixture.map(x => (Number(x.pct) || 0) / 100);
+    const mwMix = y.reduce((a, yi, i) => a + yi * mixture[i].MW, 0);
+    document.getElementById("mwMix").textContent = mixture.length ? mwMix.toFixed(4) : "—";
+  }
+
+  function flashAlert(msg, cls="") {
+    const el = document.getElementById("alerts");
+    el.innerHTML = `<span class="${cls}">${msg}</span>`;
+  }
+
+  // Converte volume informado para m³ "reais" nas condições P,T informadas
+  function toRealM3(V, unit, P, T_K, Pn, Tn_K) {
+    if (unit === "m3") return V;
+    if (unit === "L")  return V / 1000;
+    if (unit === "ft3") return V * FT3_TO_M3;
+
+    // Se o usuário informou Nm³, traz para m³ real via gás ideal (e Z se existir no cálculo geral)
+    if (unit === "Nm3") {
+      // Vn = V informado (em Nm3) => Vreal = Vn * (Pn/P) * (T/Tn)
+      // Aqui T_K é T real e Tn_K é T normal
+      return V * (Pn / P) * (T_K / Tn_K);
+    }
+    return NaN;
+  }
+
+  function calculate() {
+    const V = Number(document.getElementById("V").value);
+    const unit = document.getElementById("volUnit").value;
+    const P = Number(document.getElementById("P").value);
+    const T_C = Number(document.getElementById("T").value);
+
+    const mode = document.getElementById("mode").value;
+    const Z = Number(document.getElementById("Z").value || 1);
+
+    const Tn_C = Number(document.getElementById("TnC").value);
+    const Pn = Number(document.getElementById("Pn").value);
+
+    const showMath = document.getElementById("showMath").checked;
+
+    // validação básica
+    if (![V, P, T_C, Pn, Tn_C].every(x => isFinite(x))) {
+      document.getElementById("result").innerHTML = "⚠️ Preencha Volume, Pressão e Temperatura (e premissas no modo Engenharia).";
+      return;
+    }
+    if (P <= 0 || Pn <= 0) {
+      document.getElementById("result").innerHTML = "⚠️ Pressões devem ser > 0 e em <b>bar absoluto</b>.";
+      return;
+    }
+    if (mode === "proc" && (!isFinite(Z) || Z <= 0)) {
+      document.getElementById("result").innerHTML = "⚠️ Z deve ser > 0.";
+      return;
+    }
+
+    // mistura
+    if (mixture.length === 0) {
+      document.getElementById("result").innerHTML = "⚠️ Monte a mistura (adicione componentes e % mol).";
+      return;
+    }
+
+    const sumPct = mixture.reduce((a, x) => a + (Number(x.pct) || 0), 0);
+    if (Math.abs(sumPct - 100) > 0.5) {
+      document.getElementById("result").innerHTML =
+        `⚠️ A soma dos % está em <b>${sumPct.toFixed(2)}%</b>. Ajuste para 100% (tolerância ±0,5%).`;
+      return;
+    }
+
+    const y = mixture.map(x => (Number(x.pct) || 0) / 100);
+    const MWmix = y.reduce((a, yi, i) => a + yi * mixture[i].MW, 0); // g/mol
+
+    // temperaturas em K
+    const T_K = T_C + 273.15;
+    const Tn_K = Tn_C + 273.15;
+    if (T_K <= 0 || Tn_K <= 0) {
+      document.getElementById("result").innerHTML = "⚠️ Temperaturas em Kelvin devem ser > 0.";
+      return;
+    }
+
+    // volume real em m³ nas condições informadas
+    let Vreal_m3 = toRealM3(V, unit, P, T_K, Pn, Tn_K);
+
+    // normalização: Vn = Vreal * (P/Pn) * (Tn/T) * (1/Z)  (Z só no modo proc)
+    // Obs: Z=1 em modo ops.
+    const Zuse = (mode === "proc") ? Z : 1;
+    const Vn_m3 = Vreal_m3 * (P / Pn) * (Tn_K / T_K) * (1 / Zuse);
+
+    // mols a partir de Nm³ (usando Pn, Tn, R em bar·L/mol·K)
+    const Vn_L = Vn_m3 * 1000;
+    const n_mol = (Pn * Vn_L) / (R * Tn_K);
+
+    // massa (kg)
+    const mass_kg = (n_mol * MWmix) / 1000;
+
+    // outras unidades de volume (sempre referidas ao volume real)
+    const Vreal_L = Vreal_m3 * 1000;
+    const Vreal_ft3 = Vreal_m3 / FT3_TO_M3;
+
+    const Vn_L_out = Vn_m3 * 1000;
+    const Vn_ft3 = Vn_m3 / FT3_TO_M3;
+
+    // saída
+    let html = `
+      <b>Resultados</b><br><br>
+      <span class="chip">Mistura</span> MW médio = <span class="mono">${MWmix.toFixed(4)}</span> g/mol<br>
+      <span class="chip">Volume real</span> <span class="mono">${Vreal_m3.toFixed(6)}</span> m³
+        • <span class="mono">${Vreal_L.toFixed(3)}</span> L
+        • <span class="mono">${Vreal_ft3.toFixed(4)}</span> ft³<br>
+      <span class="chip">Volume normalizado</span> <b class="mono">${Vn_m3.toFixed(6)}</b> Nm³
+        • <span class="mono">${Vn_L_out.toFixed(3)}</span> NL
+        • <span class="mono">${Vn_ft3.toFixed(4)}</span> Nft³<br><br>
+      <span class="chip">Massa</span> <b class="mono">${mass_kg.toFixed(6)}</b> kg
+    `;
+
+    if (mode === "proc" && showMath) {
+      html += `<hr style="border:none;border-top:1px solid #1e293b;margin:12px 0;">
+        <b>Premissas e passos (modo Engenharia)</b><br>
+        P = <span class="mono">${P}</span> bar(abs), T = <span class="mono">${T_K.toFixed(2)}</span> K<br>
+        Pn = <span class="mono">${Pn}</span> bar, Tn = <span class="mono">${Tn_K.toFixed(2)}</span> K<br>
+        Z = <span class="mono">${Zuse}</span><br><br>
+        <span class="mono">Vn = Vreal × (P/Pn) × (Tn/T) × (1/Z)</span><br>
+        <span class="mono">n = (Pn × Vn(L)) / (R × Tn)</span> com R = 0.08314 bar·L/(mol·K)<br>
+        <span class="mono">m(kg) = n × MWmix / 1000</span>
+      `;
+    }
+
+    document.getElementById("result").innerHTML = html;
+
+    // alerts operacionais (boas práticas)
+    if (mode === "ops") {
+      flashAlert("✅ Modo Operação: premissas fixas (Tn=0°C, Pn=1,01325 bar, Z=1).", "ok");
+    } else {
+      flashAlert("✅ Modo Processo: você pode ajustar Tn/Pn e usar Z para gases reais.", "ok");
+    }
+  }
+
+  function loadExample() {
+    // Exemplo: 120 m³ a 8 bar abs e 35°C; mistura 80% N2 + 20% CO2
+    document.getElementById("mode").value = "ops";
+    renderMode();
+    document.getElementById("V").value = 120;
+    document.getElementById("volUnit").value = "m3";
+    document.getElementById("P").value = 8;
+    document.getElementById("T").value = 35;
+
+    mixture = [
+      { key: "N2", MW: gases.find(g=>g.key==="N2").MW, pct: 80 },
+      { key: "CO2", MW: gases.find(g=>g.key==="CO2").MW, pct: 20 },
+    ];
+    renderTable();
+    calculate();
+  }
+
+  init();
+</script>
+</body>
+</html>
