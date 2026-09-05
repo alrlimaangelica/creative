@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Medidor de Aro de Anel (calibrável)</title>
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; padding:20px;
+      background:#0f172a; color:#e5e7eb;
+      font-family: Arial, sans-serif;
+      display:flex; justify-content:center;
+    }
+    .card{
+      width:min(560px, 100%);
+      background:#020617;
+      border:1px solid #1e293b;
+      border-radius:14px;
+      padding:20px;
+      box-shadow: 0 0 22px rgba(0,0,0,.35);
+    }
+    h1{ margin:0 0 4px; font-size:19px; text-align:center; }
+    .sub{ text-align:center; color:#94a3b8; font-size:12px; margin-bottom:16px; line-height:1.5; }
+    .panel{
+      background:#0b1220;
+      border:1px solid #1e293b;
+      border-radius:12px;
+      padding:14px;
+      margin-bottom:14px;
+    }
+    .panel h2{ margin:0 0 8px; font-size:14px; color:#e2e8f0; }
+    .muted{ color:#94a3b8; font-size:12px; line-height:1.5; }
+    label{ display:block; margin:10px 0 6px; font-size:12px; color:#cbd5e1; }
+    input[type=number], input[type=text]{
+      width:100%; box-sizing:border-box;
+      padding:9px; border-radius:10px;
+      border:1px solid #1e293b; background:#0b1220; color:#e5e7eb;
+      outline:none; font-size:14px;
+    }
+    input[type=range]{ width:100%; margin:6px 0; accent-color:#2563eb; }
+    input:focus{ border-color:#2563eb; }
+    .tabs{ display:flex; gap:8px; margin-bottom:14px; }
+    .tab{
+      flex:1; text-align:center; padding:10px; border-radius:10px;
+      border:1px solid #1e293b; background:#0b1220; color:#94a3b8;
+      cursor:pointer; font-size:13px; font-weight:600;
+    }
+    .tab.active{ background:#2563eb; border-color:#2563eb; color:#fff; }
+    .btn{
+      padding:9px 12px; border-radius:10px; border:1px solid #1e293b;
+      background:#0b1220; color:#e5e7eb; cursor:pointer; font-size:13px;
+    }
+    .btn.primary{ background:#2563eb; border-color:#2563eb; color:#fff; font-weight:600; }
+    .btn.primary:hover{ background:#1d4ed8; }
+    .row{ display:flex; gap:8px; }
+    .row .btn{ flex:1; }
+    .stepbtns{ display:flex; gap:6px; margin-top:8px; }
+    .stepbtns .btn{ flex:1; padding:8px 4px; font-size:12px; }
+    .stage{
+      display:flex; align-items:center; justify-content:center;
+      background:#000; border:1px dashed #334155; border-radius:10px;
+      height:220px; margin:10px 0; position:relative; overflow:hidden;
+    }
+    #calBar{
+      height:70px; background:rgba(37,99,235,.25); border:2px solid #2563eb; border-radius:6px;
+    }
+    #ringCircle{
+      border:3px solid #f97316; border-radius:50%; background:rgba(249,115,22,.08);
+    }
+    .readout{ text-align:center; font-size:13px; color:#cbd5e1; margin-top:4px; }
+    .readout b{ color:#fff; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .result{
+      margin-top:6px; background:#020617; border:1px solid #1e293b;
+      border-radius:12px; padding:14px; font-size:14px; line-height:1.7;
+    }
+    .result .big{ font-size:22px; font-weight:700; color:#fff; }
+    table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+    th, td{ border-bottom:1px solid #1e293b; padding:8px 6px; text-align:left; }
+    th{ color:#94a3b8; font-weight:600; }
+    .chip{ display:inline-block; padding:3px 8px; border-radius:999px; border:1px solid #1e293b; background:#0b1220; color:#cbd5e1; font-size:11px; }
+    .ok{ color:#34d399; } .warn{ color:#fbbf24; }
+    .mono{ font-family: ui-monospace, Menlo, Consolas, monospace; }
+    hr{ border:none; border-top:1px solid #1e293b; margin:14px 0; }
+    [hidden]{ display:none !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>💍 Medidor de Aro de Anel</h1>
+    <div class="sub">
+      Calibra a tela do seu celular com um objeto real (ex.: cartão bancário) e usa o tamanho verdadeiro
+      da tela para medir o furo do anel. Precisão típica: ± 0,5 número, se a calibração for bem-feita.
+    </div>
+
+    <!-- ===================== CALIBRAÇÃO ===================== -->
+    <div class="panel" id="calPanel">
+      <h2>1) Calibrar a tela</h2>
+      <div class="muted" id="calStatus">Ainda não calibrado nesta tela/navegador.</div>
+
+      <div id="calForm">
+        <label>Largura real do objeto de referência (mm)</label>
+        <input type="number" id="refWidthMM" value="85.60" step="0.01" />
+        <div class="muted">Padrão: cartão de banco/crédito (ISO/IEC 7810) = 85,60 mm de largura. Pode trocar por outro objeto que você meça com régua.</div>
+
+        <div class="stage">
+          <div id="calBar" style="width:260px;"></div>
+        </div>
+        <input type="range" id="calSlider" min="120" max="820" step="1" value="260" />
+        <div class="readout">Encoste o cartão real na tela e ajuste até a barra ficar do <b>mesmo tamanho</b> dele.<br>Largura da barra: <b id="calPxOut">260</b> px</div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" onclick="confirmCalibration()">✅ Calibrar com este tamanho</button>
+        </div>
+      </div>
+
+      <div id="calDone" hidden>
+        <div class="muted">
+          Calibração salva: <span class="mono" id="calFactorOut"></span> px/mm — em <span id="calDateOut"></span>.
+        </div>
+        <button class="btn" style="margin-top:8px;" onclick="recalibrate()">🔄 Recalibrar</button>
+        <div class="muted warn" style="margin-top:6px;">
+          Importante: não use zoom do navegador (pinça) entre a calibração e a medição — isso muda a escala.
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== MÉTODO ===================== -->
+    <div class="tabs">
+      <div class="tab active" id="tabAnelBtn" onclick="setTab('anel')">Tenho um anel</div>
+      <div class="tab" id="tabFioBtn" onclick="setTab('fio')">Medi com barbante/fita</div>
+    </div>
+
+    <!-- Método A: anel físico + tela calibrada -->
+    <div class="panel" id="tabAnel">
+      <h2>2) Ajustar o círculo até o furo do anel</h2>
+      <div class="muted">Coloque o anel sobre a tela e ajuste o círculo laranja até a borda interna dele coincidir exatamente com o furo do anel.</div>
+
+      <div class="stage">
+        <div id="ringCircle" style="width:120px;height:120px;"></div>
+      </div>
+      <input type="range" id="ringSlider" min="10" max="30" step="0.05" value="17" />
+      <div class="readout">Diâmetro interno: <b id="ringMMOut">17.00</b> mm</div>
+      <div class="stepbtns">
+        <button class="btn" onclick="nudgeRing(-0.5)">-0,5 mm</button>
+        <button class="btn" onclick="nudgeRing(-0.05)">-0,05 mm</button>
+        <button class="btn" onclick="nudgeRing(0.05)">+0,05 mm</button>
+        <button class="btn" onclick="nudgeRing(0.5)">+0,5 mm</button>
+      </div>
+    </div>
+
+    <!-- Método B: barbante/fita ao redor do dedo -->
+    <div class="panel" id="tabFio" hidden>
+      <h2>2) Informar a circunferência medida</h2>
+      <div class="muted">
+        Enrole um barbante ou fita ao redor da base do dedo, marque onde fecha o círculo, e meça esse comprimento
+        com uma régua. Não precisa calibrar a tela para este método.
+      </div>
+      <label>Comprimento medido</label>
+      <div class="row">
+        <input type="number" id="fioValor" step="0.1" placeholder="ex.: 54.5" />
+        <select id="fioUnidade" style="max-width:90px;">
+          <option value="mm">mm</option>
+          <option value="cm">cm</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn primary" onclick="calcFromFio()">Calcular tamanho</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- ===================== RESULTADO ===================== -->
+    <div class="result" id="result">
+      Ajuste o círculo (ou informe a medida do barbante) para ver o resultado aqui.
+    </div>
+
+    <div class="muted" style="margin-top:12px;">
+      ⚠️ Ferramenta de estimativa. Aros US/UK/EU e "aro brasileiro" variam um pouco entre joalherias
+      (larguras diferentes de aliança, temperatura do dedo, etc.). Para uma aliança de casamento ou peça
+      cara, confirme com um anel-padrão físico ou um joalheiro antes de comprar.
+    </div>
+  </div>
+
+<script>
+  // ---------- Tabela âncora: diâmetro interno (mm) -> tamanhos ----------
+  // Valores aproximados de tabelas de conversão de joalheria amplamente usadas.
+  const TABLE = [
+    {d:14.05, us:3.0,  uk:"F"},
+    {d:14.45, us:3.5,  uk:"F½"},
+    {d:14.86, us:4.0,  uk:"G½"},
+    {d:15.27, us:4.5,  uk:"H½"},
+    {d:15.70, us:5.0,  uk:"I½"},
+    {d:16.10, us:5.5,  uk:"J½"},
+    {d:16.51, us:6.0,  uk:"K½"},
+    {d:16.92, us:6.5,  uk:"L½"},
+    {d:17.35, us:7.0,  uk:"M½"},
+    {d:17.75, us:7.5,  uk:"N½"},
+    {d:18.19, us:8.0,  uk:"O½"},
+    {d:18.53, us:8.5,  uk:"P½"},
+    {d:18.89, us:9.0,  uk:"Q"},
+    {d:19.41, us:9.5,  uk:"R"},
+    {d:19.84, us:10.0, uk:"S"},
+    {d:20.20, us:10.5, uk:"S½"},
+    {d:20.68, us:11.0, uk:"T½"},
+    {d:21.08, us:11.5, uk:"U½"},
+    {d:21.49, us:12.0, uk:"V½"},
+    {d:21.89, us:12.5, uk:"W½"},
+    {d:22.33, us:13.0, uk:"X½"},
+    {d:22.60, us:13.5, uk:"Y"},
+    {d:23.01, us:14.0, uk:"Z"},
+  ];
+
+  const LS_KEY = "medidorAnel.calibracao";
+  let pxPerMm = null;
+
+  // ---------- Utilidades ----------
+  function round(v, casas){ const f = Math.pow(10, casas); return Math.round(v*f)/f; }
+
+  function interpUS(d){
+    if (d <= TABLE[0].d){
+      const a = TABLE[0], b = TABLE[1];
+      const slope = (b.us - a.us) / (b.d - a.d);
+      return a.us + (d - a.d) * slope;
+    }
+    if (d >= TABLE[TABLE.length-1].d){
+      const a = TABLE[TABLE.length-2], b = TABLE[TABLE.length-1];
+      const slope = (b.us - a.us) / (b.d - a.d);
+      return b.us + (d - b.d) * slope;
+    }
+    for (let i=0; i<TABLE.length-1; i++){
+      const a = TABLE[i], b = TABLE[i+1];
+      if (d >= a.d && d <= b.d){
+        const t = (d - a.d) / (b.d - a.d);
+        return a.us + t * (b.us - a.us);
+      }
+    }
+    return TABLE[Math.floor(TABLE.length/2)].us;
+  }
+
+  function nearestUK(d){
+    let best = TABLE[0], bestDist = Math.abs(d - TABLE[0].d);
+    for (const row of TABLE){
+      const dist = Math.abs(d - row.d);
+      if (dist < bestDist){ best = row; bestDist = dist; }
+    }
+    return best.uk;
+  }
+
+  function renderSizes(diameterMM){
+    const d = diameterMM;
+    const circ = Math.PI * d;
+    const us = interpUS(d);
+    const usRounded = round(Math.round(us*2)/2, 2); // passos de 0,5
+    const uk = nearestUK(d);
+    const aro = Math.round(2*us + 2); // fórmula usual no Brasil: Aro ≈ 2×US + 2
+    const eu = Math.round(circ);      // tamanho europeu/francês ≈ circunferência em mm
+
+    document.getElementById("result").innerHTML = `
+      <div class="big">${d.toFixed(2)} mm</div>
+      <div class="muted">diâmetro interno • circunferência ≈ <span class="mono">${circ.toFixed(1)} mm</span></div>
+      <table>
+        <tr><th>Sistema</th><th>Tamanho</th></tr>
+        <tr><td>EUA / Canadá (US)</td><td class="mono">${usRounded}</td></tr>
+        <tr><td>Reino Unido (UK)</td><td class="mono">${uk}</td></tr>
+        <tr><td>Europeu / Francês (aprox.)</td><td class="mono">${eu}</td></tr>
+        <tr><td>Aro brasileiro (aprox.)</td><td class="mono">${aro}</td></tr>
+      </table>
+      <div class="muted" style="margin-top:8px;">
+        <span class="chip">dica</span> meça no fim do dia, com o dedo aquecido — o dedo incha um pouco ao longo do dia.
+      </div>
+    `;
+  }
+
+  // ---------- Calibração ----------
+  function loadCalibration(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data && data.pxPerMm > 0){
+        pxPerMm = data.pxPerMm;
+        document.getElementById("calForm").hidden = true;
+        document.getElementById("calDone").hidden = false;
+        document.getElementById("calFactorOut").textContent = pxPerMm.toFixed(3) + " px/mm";
+        document.getElementById("calDateOut").textContent = new Date(data.when).toLocaleString("pt-BR");
+        document.getElementById("calStatus").innerHTML = '<span class="ok">✅ Tela calibrada.</span>';
+        applyRingScale();
+      }
+    } catch(e){ /* localStorage indisponível: segue sem calibração salva */ }
+  }
+
+  function confirmCalibration(){
+    const refMM = Number(document.getElementById("refWidthMM").value);
+    const barPx = document.getElementById("calBar").getBoundingClientRect().width;
+    if (!isFinite(refMM) || refMM <= 0){
+      alert("Informe uma largura de referência válida em mm.");
+      return;
+    }
+    pxPerMm = barPx / refMM;
+
+    const data = { pxPerMm, when: Date.now() };
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e){ /* sem storage: calibração só dura a sessão */ }
+
+    document.getElementById("calForm").hidden = true;
+    document.getElementById("calDone").hidden = false;
+    document.getElementById("calFactorOut").textContent = pxPerMm.toFixed(3) + " px/mm";
+    document.getElementById("calDateOut").textContent = new Date(data.when).toLocaleString("pt-BR");
+    document.getElementById("calStatus").innerHTML = '<span class="ok">✅ Tela calibrada.</span>';
+    applyRingScale();
+  }
+
+  function recalibrate(){
+    document.getElementById("calForm").hidden = false;
+    document.getElementById("calDone").hidden = true;
+    document.getElementById("calStatus").innerHTML = "Ajuste a barra abaixo e calibre novamente.";
+  }
+
+  document.getElementById("calSlider").addEventListener("input", (e) => {
+    const px = Number(e.target.value);
+    document.getElementById("calBar").style.width = px + "px";
+    document.getElementById("calPxOut").textContent = px;
+  });
+
+  // ---------- Medição do anel (Método A) ----------
+  function applyRingScale(){
+    const mm = Number(document.getElementById("ringSlider").value);
+    document.getElementById("ringMMOut").textContent = mm.toFixed(2);
+    if (pxPerMm){
+      const px = mm * pxPerMm;
+      const circle = document.getElementById("ringCircle");
+      circle.style.width = px + "px";
+      circle.style.height = px + "px";
+    }
+    renderSizes(mm);
+  }
+
+  document.getElementById("ringSlider").addEventListener("input", applyRingScale);
+
+  function nudgeRing(delta){
+    const slider = document.getElementById("ringSlider");
+    let v = Number(slider.value) + delta;
+    v = Math.min(Number(slider.max), Math.max(Number(slider.min), v));
+    slider.value = round(v, 2);
+    applyRingScale();
+  }
+
+  // ---------- Medição por barbante/fita (Método B) ----------
+  function calcFromFio(){
+    const val = Number(document.getElementById("fioValor").value);
+    const unit = document.getElementById("fioUnidade").value;
+    if (!isFinite(val) || val <= 0){
+      document.getElementById("result").innerHTML = '<span class="warn">⚠️ Informe um comprimento válido.</span>';
+      return;
+    }
+    const circMM = unit === "cm" ? val * 10 : val;
+    const diameterMM = circMM / Math.PI;
+    renderSizes(diameterMM);
+  }
+
+  // ---------- Abas ----------
+  function setTab(which){
+    const isAnel = which === "anel";
+    document.getElementById("tabAnel").hidden = !isAnel;
+    document.getElementById("tabFio").hidden = isAnel;
+    document.getElementById("tabAnelBtn").classList.toggle("active", isAnel);
+    document.getElementById("tabFioBtn").classList.toggle("active", !isAnel);
+    if (isAnel && pxPerMm) applyRingScale();
+  }
+
+  // ---------- Início ----------
+  loadCalibration();
+  if (!pxPerMm) renderSizes(Number(document.getElementById("ringSlider").value));
+</script>
+</body>
+</html>
