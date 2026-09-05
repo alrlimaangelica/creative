@@ -60,10 +60,13 @@
     .stage{
       display:flex; align-items:center; justify-content:center;
       background:#000; border:1px dashed #334155; border-radius:10px;
-      height:220px; margin:10px 0; position:relative; overflow:hidden;
+      height:220px; margin:10px 0; position:relative;
+    }
+    #calStage{
+      height:min(70dvh, 640px);
     }
     #calBar{
-      height:70px; background:rgba(37,99,235,.25); border:2px solid #2563eb; border-radius:6px;
+      width:80px; background:rgba(37,99,235,.25); border:2px solid #2563eb; border-radius:6px;
     }
     #ringCircle{
       border:3px solid #f97316; border-radius:50%; background:rgba(249,115,22,.08);
@@ -99,15 +102,19 @@
       <div class="muted" id="calStatus">Ainda não calibrado nesta tela/navegador.</div>
 
       <div id="calForm">
-        <label>Largura real do objeto de referência (mm)</label>
+        <label>Comprimento real do objeto de referência (mm)</label>
         <input type="number" id="refWidthMM" value="85.60" step="0.01" />
-        <div class="muted">Padrão: cartão de banco/crédito (ISO/IEC 7810) = 85,60 mm de largura. Pode trocar por outro objeto que você meça com régua.</div>
-
-        <div class="stage">
-          <div id="calBar" style="width:260px;"></div>
+        <div class="muted">Padrão: lado comprido de um cartão de banco/crédito (ISO/IEC 7810) = 85,60 mm. Pode trocar por outro objeto que você meça com régua.</div>
+        <div class="muted warn" style="margin-top:6px;">
+          Use a barra <b>na vertical</b> (de cima pra baixo): a largura da tela do celular é menor que o
+          comprimento do cartão, então deitado ele não cabe — encoste o cartão em pé, de cima a baixo da tela.
         </div>
-        <input type="range" id="calSlider" min="120" max="820" step="1" value="260" />
-        <div class="readout">Encoste o cartão real na tela e ajuste até a barra ficar do <b>mesmo tamanho</b> dele.<br>Largura da barra: <b id="calPxOut">260</b> px</div>
+
+        <div class="stage" id="calStage">
+          <div id="calBar" style="height:400px;"></div>
+        </div>
+        <input type="range" id="calSlider" min="150" max="1000" step="1" value="400" />
+        <div class="readout">Encoste o cartão real (na vertical) na tela e ajuste até a barra ficar do <b>mesmo comprimento</b> dele.<br>Comprimento da barra: <b id="calPxOut">400</b> px</div>
 
         <div class="row" style="margin-top:10px;">
           <button class="btn primary" onclick="confirmCalibration()">✅ Calibrar com este tamanho</button>
@@ -293,9 +300,9 @@
 
   function confirmCalibration(){
     const refMM = Number(document.getElementById("refWidthMM").value);
-    const barPx = document.getElementById("calBar").getBoundingClientRect().width;
+    const barPx = document.getElementById("calBar").getBoundingClientRect().height;
     if (!isFinite(refMM) || refMM <= 0){
-      alert("Informe uma largura de referência válida em mm.");
+      alert("Informe um comprimento de referência válido em mm.");
       return;
     }
     pxPerMm = barPx / refMM;
@@ -319,7 +326,7 @@
 
   document.getElementById("calSlider").addEventListener("input", (e) => {
     const px = Number(e.target.value);
-    document.getElementById("calBar").style.width = px + "px";
+    document.getElementById("calBar").style.height = px + "px";
     document.getElementById("calPxOut").textContent = px;
   });
 
